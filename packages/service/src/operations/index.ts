@@ -34,6 +34,14 @@ export {
 } from "./categories";
 
 export {
+  getCurrencies,
+  createCurrency,
+  deleteCurrency,
+  createCurrencySchema,
+  deleteCurrencySchema,
+} from "./currencies";
+
+export {
   spendingReport,
   spendingReportSchema,
   type SpendingReportInput,
