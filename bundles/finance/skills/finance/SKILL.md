@@ -9,42 +9,47 @@ description: >
 allowed-tools:
   - Read
   - Grep
-  - finance_mcp__create_income
+  - finance-mcp__create_income
   - finance-mcp__create_expense
   - finance-mcp__create_transfer
-  - assistant-db__list_transactions
-  - assistant-db__delete_transaction
-  - assistant-db__get_wallets
-  - assistant-db__get_wallet_balance
-  - assistant-db__create_wallet
-  - assistant-db__get_categories
-  - assistant-db__create_category
-  - assistant-db__spending_report
+  - finance-mcp__list_transactions
+  - finance-mcp__delete_transaction
+  - finance-mcp__get_wallets
+  - finance-mcp__get_wallet_balance
+  - finance-mcp__create_wallet
+  - finance-mcp__get_categories
+  - finance-mcp__create_category
+  - finance-mcp__delete_category
+  - finance-mcp__spending_report
 ---
 
 # Finance Skill
 
-Record and query personal financial data stored in PostgreSQL via the `assistant-db` MCP server.
+Record and query personal financial data stored in PostgreSQL via the `finance-mcp` MCP server.
 
 ## Transaction Types
 
 ### 1. Expense (Трата)
 
-- Use `create_transaction` with `type: "expense"`
+- Use `create_expense`
 - Amount is always positive — the system negates it automatically
-- Requires: description, amount, walletId, categoryId
+- Requires: amount, walletId, currencyCode, categoryId
+- Optional: description
 
 ### 2. Income (Пополнение)
 
-- Use `create_transaction` with `type: "income"`
+- Use `create_income`
 - Amount is positive
-- Requires: description, amount, walletId
+- Requires: amount, walletId, currencyCode
+- Optional: description
 
 ### 3. Transfer (Перевод)
 
-- Use `create_transaction` with `type: "transfer"`, `walletId` (source), `toWalletId` (destination)
+- Use `create_transfer` with `walletId` (source), `toWalletId` (destination)
 - The system creates two linked transactions automatically
-- Category is optional for transfers
+- Requires: amount, walletId, currencyCode, toWalletId, toCurrencyCode, toAmount
+- Optional: description
+- For same-currency transfers, `toAmount` equals `amount`
 
 ## Workflow
 
@@ -53,9 +58,10 @@ Record and query personal financial data stored in PostgreSQL via the `assistant
 Extract from the user's message:
 
 - **Amount** — number (always positive)
-- **Description** — what was bought / reason for transaction
+- **Currency** — currency code (e.g. ARS, RUB, USDT)
+- **Description** — what was bought / reason for transaction (optional)
 - **Wallet** — which wallet to use
-- **Category** — spending/income category
+- **Category** — spending category (required for expenses only)
 - **Type** — expense, income, or transfer (infer from context)
 
 ### Step 2: Resolve References
@@ -79,7 +85,7 @@ Do NOT guess — ask. But do NOT over-ask if the context is obvious.
 
 ### Step 4: Create the Transaction
 
-Call `create_transaction` with the resolved data.
+Call the appropriate tool (`create_expense`, `create_income`, or `create_transfer`) with the resolved data.
 
 ### Step 5: Report Back
 
