@@ -9,7 +9,9 @@ description: >
 allowed-tools:
   - Read
   - Grep
-  - assistant-db__create_transaction
+  - finance_mcp__create_income
+  - finance-mcp__create_expense
+  - finance-mcp__create_transfer
   - assistant-db__list_transactions
   - assistant-db__delete_transaction
   - assistant-db__get_wallets

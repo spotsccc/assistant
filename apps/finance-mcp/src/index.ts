@@ -6,8 +6,8 @@ import { registerCategoryTools } from "./tools/categories";
 import { registerReportTools } from "./tools/reports";
 
 const server = new McpServer({
-  name: "assistant-db",
-  version: "0.0.1",
+  name: "finance-mcp",
+  version: "0.0.2",
 });
 
 registerTransactionTools(server);
