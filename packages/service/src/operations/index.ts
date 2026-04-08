@@ -45,4 +45,10 @@ export {
   spendingReport,
   spendingReportSchema,
   type SpendingReportInput,
+  incomeReport,
+  incomeReportSchema,
+  type IncomeReportInput,
+  financeSummary,
+  financeSummarySchema,
+  type FinanceSummaryInput,
 } from "./reports";
