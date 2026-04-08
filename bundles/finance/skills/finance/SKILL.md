@@ -14,11 +14,11 @@ allowed-tools:
 
 # Finance Skill
 
-Record and query personal financial data stored in PostgreSQL via the `finance` CLI.
+Record and query personal financial data stored in PostgreSQL via the `assistant` CLI.
 
 ## Commands Reference
 
-All commands: `finance <command> [json-args]`
+All commands: `assistant <command> [json-args]`
 Output: JSON to stdout on success, error to stderr with exit code 1.
 
 | Command | Arguments | Description |
@@ -40,21 +40,21 @@ Output: JSON to stdout on success, error to stderr with exit code 1.
 
 ### 1. Expense (Трата)
 
-- Use `finance create-expense '{"amount":"100","walletId":"...","currencyCode":"ARS","categoryId":"..."}'`
+- Use `assistant create-expense '{"amount":"100","walletId":"...","currencyCode":"ARS","categoryId":"..."}'`
 - Amount is always positive — the system negates it automatically
 - Requires: amount, walletId, currencyCode, categoryId
 - Optional: description
 
 ### 2. Income (Пополнение)
 
-- Use `finance create-income '{"amount":"5000","walletId":"...","currencyCode":"ARS"}'`
+- Use `assistant create-income '{"amount":"5000","walletId":"...","currencyCode":"ARS"}'`
 - Amount is positive
 - Requires: amount, walletId, currencyCode
 - Optional: description
 
 ### 3. Transfer (Перевод)
 
-- Use `finance create-transfer '{"amount":"100","walletId":"...","currencyCode":"USD","toWalletId":"...","toCurrencyCode":"USD","toAmount":"100"}'`
+- Use `assistant create-transfer '{"amount":"100","walletId":"...","currencyCode":"USD","toWalletId":"...","toCurrencyCode":"USD","toAmount":"100"}'`
 - The system creates two linked transactions automatically
 - Requires: amount, walletId, currencyCode, toWalletId, toCurrencyCode, toAmount
 - Optional: description
@@ -77,9 +77,9 @@ Extract from the user's message:
 
 Before creating a transaction:
 
-1. Run `finance get-wallets` to find the correct wallet ID
-2. Run `finance get-categories` to find the correct category ID
-3. If category doesn't exist, ask the user or create it with `finance create-category '{"name":"..."}'`
+1. Run `assistant get-wallets` to find the correct wallet ID
+2. Run `assistant get-categories` to find the correct category ID
+3. If category doesn't exist, ask the user or create it with `assistant create-category '{"name":"..."}'`
 
 ### Step 3: Handle Ambiguity
 
@@ -94,11 +94,11 @@ Do NOT guess — ask. But do NOT over-ask if the context is obvious.
 
 ### Step 4: Create the Transaction
 
-Run the appropriate command (`finance create-expense`, `finance create-income`, or `finance create-transfer`) with the resolved data as a JSON argument.
+Run the appropriate command (`assistant create-expense`, `assistant create-income`, or `assistant create-transfer`) with the resolved data as a JSON argument.
 
 ### Step 5: Report Back
 
-After creating the transaction, run `finance get-wallet-balance '{"walletId":"..."}'` and reply with a **concise confirmation** including:
+After creating the transaction, run `assistant get-wallet-balance '{"walletId":"..."}'` and reply with a **concise confirmation** including:
 
 - What was created (description, amount, wallet, category)
 - Updated wallet balance

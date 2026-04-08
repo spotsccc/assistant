@@ -1,4 +1,61 @@
-import {
+import fs from "node:fs";
+import path from "node:path";
+import os from "node:os";
+import * as errore from "errore";
+
+const CONFIG_DIR = path.join(os.homedir(), ".assistant");
+const CONFIG_FILE = path.join(CONFIG_DIR, "config.json");
+
+interface Config {
+  databaseUrl?: string;
+}
+
+function readConfig(): Config {
+  const raw = errore.try({
+    try: () => fs.readFileSync(CONFIG_FILE, "utf-8"),
+    catch: () => new Error("Config not found"),
+  });
+  if (raw instanceof Error) return {};
+  const parsed = errore.try({
+    try: () => JSON.parse(raw) as Config,
+    catch: () => new Error("Invalid config"),
+  });
+  if (parsed instanceof Error) return {};
+  return parsed;
+}
+
+function writeConfig(config: Config) {
+  fs.mkdirSync(CONFIG_DIR, { recursive: true });
+  fs.writeFileSync(CONFIG_FILE, JSON.stringify(config, null, 2));
+}
+
+const command = process.argv[2];
+const jsonArg = process.argv[3];
+
+if (!command) {
+  console.error("Usage: assistant <command> [json-args]");
+  process.exit(1);
+}
+
+if (command === "auth") {
+  if (!jsonArg) {
+    console.error("Usage: assistant auth <database-url>");
+    process.exit(1);
+  }
+  writeConfig({ databaseUrl: jsonArg });
+  console.log("Database URL saved.");
+  process.exit(0);
+}
+
+// Set DATABASE_URL from config if not already in env
+if (!process.env.DATABASE_URL) {
+  const config = readConfig();
+  if (config.databaseUrl) {
+    process.env.DATABASE_URL = config.databaseUrl;
+  }
+}
+
+const {
   createTransaction,
   listTransactions,
   deleteTransaction,
@@ -19,7 +76,7 @@ import {
   deleteCategorySchema,
   spendingReport,
   spendingReportSchema,
-} from "@repo/service/operations";
+} = await import("@repo/service/operations");
 
 type Handler = (input: Record<string, unknown>) => Promise<unknown>;
 
@@ -95,20 +152,10 @@ const commands: Record<string, Handler> = {
   },
 };
 
-const command = process.argv[2];
-const jsonArg = process.argv[3];
-
-if (!command) {
-  console.error(
-    `Usage: finance <command> [json-args]\nCommands: ${Object.keys(commands).join(", ")}`,
-  );
-  process.exit(1);
-}
-
 const handler = commands[command];
 if (!handler) {
   console.error(
-    `Unknown command: ${command}\nAvailable: ${Object.keys(commands).join(", ")}`,
+    `Unknown command: ${command}\nAvailable: auth, ${Object.keys(commands).join(", ")}`,
   );
   process.exit(1);
 }

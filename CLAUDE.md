@@ -6,14 +6,14 @@ Turborepo monorepo: MCP servers, OpenClaw bundles, and web UI for building a per
 
 ```
 apps/web              — Next.js 16 + Mantine v7 + TanStack Query (port 3000)
-apps/finance-cli      — CLI for finance operations, thin wrapper over service operations
+apps/cli              — CLI (assistant), thin wrapper over service operations
 bundles/finance       — OpenClaw skill bundle for personal finance tracking
 packages/service      — Drizzle ORM: schema, client, operations (business logic)
 ```
 
 ## Key Architectural Rules
 
-- **All business logic lives in `packages/service/src/operations/`**. Both `apps/web` API routes and `apps/finance-cli` tools are thin wrappers — they accept input, call an operation, return the result. Never put business logic in route handlers or CLI commands.
+- **All business logic lives in `packages/service/src/operations/`**. Both `apps/web` API routes and `apps/cli` commands are thin wrappers — they accept input, call an operation, return the result. Never put business logic in route handlers or CLI commands.
 - **Wallet balance is computed** as `SUM(transactions.amount)` — never stored as a column.
 - **Transfers create two linked transactions** (debit + credit) inside a single DB transaction, linked via `linked_transaction_id`.
 - **Expense amounts are stored negative, income positive.** The `createTransaction` operation handles sign conversion — callers always pass a positive number.
@@ -24,7 +24,7 @@ packages/service      — Drizzle ORM: schema, client, operations (business logi
 | ---------- | -------------------------------------------------------------- |
 | DB         | PostgreSQL + Drizzle ORM (`postgres` driver)                   |
 | Web        | Next.js App Router, Mantine v7, TanStack Query, Mantine Charts |
-| CLI        | Finance CLI, thin wrapper over service operations               |
+| CLI        | Assistant CLI, thin wrapper over service operations              |
 | Bundles    | OpenClaw skill bundles (skills + CLI config)                   |
 | Validation | Zod (CLI + API inputs)                                         |
 | Build      | Turborepo, pnpm workspaces                                     |
@@ -43,7 +43,7 @@ pnpm --filter @repo/service db:studio      # open Drizzle Studio
 
 ## Environment Variables
 
-- `DATABASE_URL` — PostgreSQL connection string (required by web, finance-cli, service)
+- `DATABASE_URL` — PostgreSQL connection string (required by web, cli, service). CLI also supports `assistant auth <database-url>` to persist the URL in `~/.assistant/config.json`.
 
 ## Module Imports
 
@@ -55,7 +55,7 @@ import { transactions, wallets, ... } from "@repo/service/schema"; // raw tables
 import { createTransaction, getWallets, ... } from "@repo/service/operations"; // business logic
 ```
 
-Both `apps/finance-cli` and `apps/web` use `Bundler` module resolution. Internal imports use extensionless paths (`./schema`, not `./schema.js`).
+Both `apps/cli` and `apps/web` use `Bundler` module resolution. Internal imports use extensionless paths (`./schema`, not `./schema.js`).
 
 ## Database Schema (4 tables)
 
