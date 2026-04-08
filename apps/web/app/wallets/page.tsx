@@ -15,6 +15,7 @@ import {
 } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import Link from "next/link";
 import { useState } from "react";
 
 interface WalletBalance {
@@ -97,7 +98,13 @@ export default function WalletsPage() {
         {wallets.map((wallet) => (
           <Card key={wallet.id} withBorder shadow="sm" radius="md">
             <Group justify="space-between" mb="xs">
-              <Text fw={600} size="lg">
+              <Text
+                fw={600}
+                size="lg"
+                component={Link}
+                href={`/wallets/${wallet.id}`}
+                style={{ textDecoration: "none", color: "inherit" }}
+              >
                 {wallet.name}
               </Text>
               <ActionIcon
