@@ -1,14 +1,13 @@
 {
   "name": "@spotsccc/finance-bundle",
-  "version": "0.4.0",
-  "description": "OpenClaw finance skill bundle — personal finance tracking via MCP server",
+  "version": "0.5.0",
+  "description": "OpenClaw finance skill bundle — personal finance tracking via CLI",
   "files": [
-    ".mcp.json",
     "skills"
   ],
   "keywords": [
     "openclaw",
-    "mcp",
+    "cli",
     "finance",
     "skill"
   ]

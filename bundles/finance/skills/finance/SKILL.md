@@ -7,45 +7,54 @@ description: >
   купил, оплатил, списание, пополнение, кошелёк, expense, income, transfer, balance, report.
   Do NOT trigger for: creating/modifying database structure.
 allowed-tools:
+  - Bash
   - Read
   - Grep
-  - finance-mcp__create_income
-  - finance-mcp__create_expense
-  - finance-mcp__create_transfer
-  - finance-mcp__list_transactions
-  - finance-mcp__delete_transaction
-  - finance-mcp__get_wallets
-  - finance-mcp__get_wallet_balance
-  - finance-mcp__create_wallet
-  - finance-mcp__get_categories
-  - finance-mcp__create_category
-  - finance-mcp__delete_category
-  - finance-mcp__spending_report
 ---
 
 # Finance Skill
 
-Record and query personal financial data stored in PostgreSQL via the `finance-mcp` MCP server.
+Record and query personal financial data stored in PostgreSQL via the `finance` CLI.
+
+## Commands Reference
+
+All commands: `finance <command> [json-args]`
+Output: JSON to stdout on success, error to stderr with exit code 1.
+
+| Command | Arguments | Description |
+|---|---|---|
+| `create-expense` | amount, walletId, currencyCode, categoryId, description? | Record an expense |
+| `create-income` | amount, walletId, currencyCode, description? | Record income |
+| `create-transfer` | amount, walletId, currencyCode, toWalletId, toCurrencyCode, toAmount, description? | Transfer between wallets |
+| `list-transactions` | walletId?, categoryId?, type?, limit?, offset?, dateFrom?, dateTo? | List transactions |
+| `delete-transaction` | id | Delete a transaction |
+| `get-wallets` | — | Get all wallets with balances |
+| `get-wallet-balance` | walletId | Get wallet balance |
+| `create-wallet` | name | Create a wallet |
+| `get-categories` | — | Get all categories |
+| `create-category` | name | Create a category |
+| `delete-category` | id | Delete a category |
+| `spending-report` | groupBy, walletId?, dateFrom?, dateTo? | Spending report |
 
 ## Transaction Types
 
 ### 1. Expense (Трата)
 
-- Use `create_expense`
+- Use `finance create-expense '{"amount":"100","walletId":"...","currencyCode":"ARS","categoryId":"..."}'`
 - Amount is always positive — the system negates it automatically
 - Requires: amount, walletId, currencyCode, categoryId
 - Optional: description
 
 ### 2. Income (Пополнение)
 
-- Use `create_income`
+- Use `finance create-income '{"amount":"5000","walletId":"...","currencyCode":"ARS"}'`
 - Amount is positive
 - Requires: amount, walletId, currencyCode
 - Optional: description
 
 ### 3. Transfer (Перевод)
 
-- Use `create_transfer` with `walletId` (source), `toWalletId` (destination)
+- Use `finance create-transfer '{"amount":"100","walletId":"...","currencyCode":"USD","toWalletId":"...","toCurrencyCode":"USD","toAmount":"100"}'`
 - The system creates two linked transactions automatically
 - Requires: amount, walletId, currencyCode, toWalletId, toCurrencyCode, toAmount
 - Optional: description
@@ -68,9 +77,9 @@ Extract from the user's message:
 
 Before creating a transaction:
 
-1. Call `get_wallets` to find the correct wallet ID
-2. Call `get_categories` to find the correct category ID
-3. If category doesn't exist, ask the user or create it with `create_category`
+1. Run `finance get-wallets` to find the correct wallet ID
+2. Run `finance get-categories` to find the correct category ID
+3. If category doesn't exist, ask the user or create it with `finance create-category '{"name":"..."}'`
 
 ### Step 3: Handle Ambiguity
 
@@ -85,11 +94,11 @@ Do NOT guess — ask. But do NOT over-ask if the context is obvious.
 
 ### Step 4: Create the Transaction
 
-Call the appropriate tool (`create_expense`, `create_income`, or `create_transfer`) with the resolved data.
+Run the appropriate command (`finance create-expense`, `finance create-income`, or `finance create-transfer`) with the resolved data as a JSON argument.
 
 ### Step 5: Report Back
 
-After creating the transaction, call `get_wallet_balance` and reply with a **concise confirmation** including:
+After creating the transaction, run `finance get-wallet-balance '{"walletId":"..."}'` and reply with a **concise confirmation** including:
 
 - What was created (description, amount, wallet, category)
 - Updated wallet balance
