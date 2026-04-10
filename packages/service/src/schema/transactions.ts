@@ -51,10 +51,6 @@ export const transactionEntries = pgTable("transaction_entries", {
     precision: 36,
     scale: 18,
   }),
-  snapshotRate: numeric("snapshotRate", {
-    precision: 36,
-    scale: 18,
-  }).notNull(),
 });
 
 export type TransactionEntry = InferSelectModel<typeof transactionEntries>;
