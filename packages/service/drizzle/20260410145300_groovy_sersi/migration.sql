@@ -1,0 +1,1 @@
+ALTER TABLE "currencies" ALTER COLUMN "type" SET NOT NULL;

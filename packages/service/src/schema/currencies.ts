@@ -8,5 +8,5 @@ export const currencies = pgTable("currencies", {
   name: varchar("name", { length: 50 }).notNull(),
   symbol: varchar("symbol", { length: 5 }),
   createdAt: timestamp("created_at").defaultNow().notNull(),
-  type: currencyType("type"),
+  type: currencyType("type").notNull(),
 });
