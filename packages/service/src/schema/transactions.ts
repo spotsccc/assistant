@@ -40,6 +40,11 @@ export const transactionEntries = pgTable("transaction_entries", {
     .notNull(),
   amount: numeric("amount", { precision: 36, scale: 18 }).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
+  snapshotCurrencyId: uuid("snapshot_currency_id").references(
+    () => currencies.id,
+  ),
+  snapshotAmount: numeric("snapshot_amount", { precision: 36, scale: 18 }),
+  snapshotRate: numeric("snapshotRate", { precision: 36, scale: 18 }),
 });
 
 export type TransactionEntry = InferSelectModel<typeof transactionEntries>;
