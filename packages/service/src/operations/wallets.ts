@@ -46,7 +46,9 @@ export async function getWallets() {
 
 export async function getWalletBalance(walletId: string) {
   const wallet = await db.query.wallets.findFirst({
-    where: eq(wallets.id, walletId),
+    where: {
+      id: walletId,
+    },
   });
 
   if (!wallet) {
@@ -73,7 +75,9 @@ export async function getWalletBalance(walletId: string) {
 
 export async function deleteWallet(id: string) {
   const wallet = await db.query.wallets.findFirst({
-    where: eq(wallets.id, id),
+    where: {
+      id,
+    },
   });
 
   if (!wallet) {

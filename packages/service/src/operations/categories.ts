@@ -14,7 +14,9 @@ export const deleteCategorySchema = z.object({
 
 export async function getCategories() {
   return db.query.categories.findMany({
-    orderBy: (categories, { asc }) => [asc(categories.name)],
+    orderBy: {
+      name: "asc",
+    },
   });
 }
 
@@ -29,7 +31,9 @@ export async function createCategory(input: { name: string }) {
 
 export async function deleteCategory(id: string) {
   const category = await db.query.categories.findFirst({
-    where: eq(categories.id, id),
+    where: {
+      id,
+    },
   });
 
   if (!category) {

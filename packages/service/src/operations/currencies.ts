@@ -16,7 +16,9 @@ export const deleteCurrencySchema = z.object({
 
 export async function getCurrencies() {
   return db.query.currencies.findMany({
-    orderBy: (currencies, { asc }) => [asc(currencies.code)],
+    orderBy: {
+      code: "asc",
+    },
   });
 }
 
@@ -35,7 +37,9 @@ export async function createCurrency(input: {
 
 export async function deleteCurrency(id: string) {
   const currency = await db.query.currencies.findFirst({
-    where: eq(currencies.id, id),
+    where: {
+      id,
+    },
   });
 
   if (!currency) {

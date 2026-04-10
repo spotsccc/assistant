@@ -8,7 +8,7 @@ if (!databaseUrl) {
 }
 
 const client = postgres(databaseUrl, { max: 1 });
-const db = drizzle(client);
+const db = drizzle({ client });
 
 await migrate(db, { migrationsFolder: new URL("../drizzle", import.meta.url).pathname });
 await client.end();

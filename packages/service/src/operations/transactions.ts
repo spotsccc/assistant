@@ -81,6 +81,22 @@ type TransferInput = z.infer<typeof transferSchema>;
 export type CreateTransactionInput = z.infer<typeof createTransactionSchema>;
 export type ListTransactionsInput = z.infer<typeof listTransactionsSchema>;
 
+function createSnapshotEntry({
+  currencyId,
+  amount,
+}: {
+  currencyId: string;
+  amount: string;
+}) {
+  return {
+    currencyId,
+    amount,
+    snapshotCurrencyId: currencyId,
+    snapshotAmount: amount,
+    snapshot_Rate: "1",
+  };
+}
+
 async function createIncome({
   walletId,
   currencyCode,
@@ -89,14 +105,18 @@ async function createIncome({
   amount,
 }: IncomeInput) {
   const wallet = await db.query.wallets.findFirst({
-    where: eq(wallets.id, walletId),
+    where: {
+      id: walletId,
+    },
   });
   if (!wallet) {
     return new NotFoundError({ entity: "Wallet", id: walletId });
   }
 
   const currency = await db.query.currencies.findFirst({
-    where: eq(currencies.code, currencyCode),
+    where: {
+      code: currencyCode,
+    },
   });
   if (!currency) {
     return new NotFoundError({ entity: "Currency", id: currencyCode });
@@ -117,8 +137,10 @@ async function createIncome({
         .values({
           transactionId: txn!.id,
           walletId,
-          currencyId: currency.id,
-          amount,
+          ...createSnapshotEntry({
+            currencyId: currency.id,
+            amount,
+          }),
         })
         .returning();
 
@@ -136,14 +158,18 @@ async function createExpense({
   categoryId,
 }: ExpenseInput) {
   const wallet = await db.query.wallets.findFirst({
-    where: eq(wallets.id, walletId),
+    where: {
+      id: walletId,
+    },
   });
   if (!wallet) {
     return new NotFoundError({ entity: "Wallet", id: walletId });
   }
 
   const currency = await db.query.currencies.findFirst({
-    where: eq(currencies.code, currencyCode),
+    where: {
+      code: currencyCode,
+    },
   });
   if (!currency) {
     return new NotFoundError({ entity: "Currency", id: currencyCode });
@@ -187,8 +213,10 @@ async function createExpense({
         .values({
           transactionId: txn!.id,
           walletId,
-          currencyId: currency.id,
-          amount: `-${amount}`,
+          ...createSnapshotEntry({
+            currencyId: currency.id,
+            amount: `-${amount}`,
+          }),
         })
         .returning();
 
@@ -208,28 +236,36 @@ async function createTransfer({
   toAmount,
 }: TransferInput) {
   const fromWallet = await db.query.wallets.findFirst({
-    where: eq(wallets.id, walletId),
+    where: {
+      id: walletId,
+    },
   });
   if (!fromWallet) {
     return new NotFoundError({ entity: "Wallet", id: walletId });
   }
 
   const toWallet = await db.query.wallets.findFirst({
-    where: eq(wallets.id, toWalletId),
+    where: {
+      id: toWalletId,
+    },
   });
   if (!toWallet) {
     return new NotFoundError({ entity: "Wallet", id: toWalletId });
   }
 
   const fromCurrency = await db.query.currencies.findFirst({
-    where: eq(currencies.code, currencyCode),
+    where: {
+      code: currencyCode,
+    },
   });
   if (!fromCurrency) {
     return new NotFoundError({ entity: "Currency", id: currencyCode });
   }
 
   const toCurrency = await db.query.currencies.findFirst({
-    where: eq(currencies.code, toCurrencyCode),
+    where: {
+      code: toCurrencyCode,
+    },
   });
   if (!toCurrency) {
     return new NotFoundError({ entity: "Currency", id: toCurrencyCode });
@@ -273,14 +309,18 @@ async function createTransfer({
           {
             transactionId: txn!.id,
             walletId,
-            currencyId: fromCurrency.id,
-            amount: `-${amount}`,
+            ...createSnapshotEntry({
+              currencyId: fromCurrency.id,
+              amount: `-${amount}`,
+            }),
           },
           {
             transactionId: txn!.id,
             walletId: toWalletId,
-            currencyId: toCurrency.id,
-            amount: toAmount,
+            ...createSnapshotEntry({
+              currencyId: toCurrency.id,
+              amount: toAmount,
+            }),
           },
         ])
         .returning();
@@ -337,14 +377,20 @@ export async function listTransactions(input: ListTransactionsInput = {}) {
 
   const [items, countResult] = await Promise.all([
     db.query.transactions.findMany({
-      where,
+      where: where
+        ? {
+            RAW: where,
+          }
+        : undefined,
       with: {
         category: true,
         entries: {
           with: { wallet: true, currency: true },
         },
       },
-      orderBy: [desc(transactions.createdAt)],
+      orderBy: {
+        createdAt: "desc",
+      },
       limit,
       offset,
     }),
@@ -359,7 +405,9 @@ export async function listTransactions(input: ListTransactionsInput = {}) {
 
 export async function deleteTransaction(id: string) {
   const transaction = await db.query.transactions.findFirst({
-    where: eq(transactions.id, id),
+    where: {
+      id,
+    },
   });
 
   if (!transaction) {

@@ -1,4 +1,4 @@
-import { relations } from "drizzle-orm";
+import { defineRelations } from "drizzle-orm";
 import { currencies } from "./currencies";
 import { categories } from "./categories";
 import { wallets } from "./wallets";
@@ -33,111 +33,122 @@ export { activityStatusEnum, activities } from "./activities";
 export { goalFrequencyTypeEnum, activityGoals } from "./activity-goals";
 export { activityLogs } from "./activity-logs";
 
-// Relations — Finance
-
-export const currenciesRelations = relations(currencies, ({ many }) => ({
-  transactionEntries: many(transactionEntries),
-}));
-
-export const categoriesRelations = relations(categories, ({ many }) => ({
-  transactions: many(transactions),
-}));
-
-export const walletsRelations = relations(wallets, ({ many }) => ({
-  transactionEntries: many(transactionEntries),
-}));
-
-export const transactionsRelations = relations(transactions, ({ one, many }) => ({
-  category: one(categories, {
-    fields: [transactions.categoryId],
-    references: [categories.id],
-  }),
-  entries: many(transactionEntries),
-}));
-
-export const transactionEntriesRelations = relations(
-  transactionEntries,
-  ({ one }) => ({
-    transaction: one(transactions, {
-      fields: [transactionEntries.transactionId],
-      references: [transactions.id],
-    }),
-    wallet: one(wallets, {
-      fields: [transactionEntries.walletId],
-      references: [wallets.id],
-    }),
-    currency: one(currencies, {
-      fields: [transactionEntries.currencyId],
-      references: [currencies.id],
-    }),
+export const relations = defineRelations(
+  {
+    currencies,
+    categories,
+    wallets,
+    transactions,
+    transactionEntries,
+    calendars,
+    events,
+    eventExceptions,
+    alarms,
+    activityCategories,
+    activities,
+    activityGoals,
+    activityLogs,
+  },
+  (r) => ({
+    currencies: {
+      transactionEntries: r.many.transactionEntries({
+        alias: "currency",
+      }),
+      snapshotTransactionEntries: r.many.transactionEntries({
+        alias: "snapshotCurrency",
+      }),
+    },
+    categories: {
+      transactions: r.many.transactions(),
+    },
+    wallets: {
+      transactionEntries: r.many.transactionEntries(),
+    },
+    transactions: {
+      category: r.one.categories({
+        from: r.transactions.categoryId,
+        to: r.categories.id,
+      }),
+      entries: r.many.transactionEntries(),
+    },
+    transactionEntries: {
+      transaction: r.one.transactions({
+        from: r.transactionEntries.transactionId,
+        to: r.transactions.id,
+        optional: false,
+      }),
+      wallet: r.one.wallets({
+        from: r.transactionEntries.walletId,
+        to: r.wallets.id,
+        optional: false,
+      }),
+      currency: r.one.currencies({
+        from: r.transactionEntries.currencyId,
+        to: r.currencies.id,
+        alias: "currency",
+        optional: false,
+      }),
+      snapshotCurrency: r.one.currencies({
+        from: r.transactionEntries.snapshotCurrencyId,
+        to: r.currencies.id,
+        alias: "snapshotCurrency",
+        optional: false,
+      }),
+    },
+    calendars: {
+      events: r.many.events(),
+    },
+    events: {
+      calendar: r.one.calendars({
+        from: r.events.calendarId,
+        to: r.calendars.id,
+        optional: false,
+      }),
+      exceptions: r.many.eventExceptions(),
+      alarms: r.many.alarms(),
+    },
+    eventExceptions: {
+      event: r.one.events({
+        from: r.eventExceptions.eventId,
+        to: r.events.id,
+        optional: false,
+      }),
+      alarms: r.many.alarms(),
+    },
+    alarms: {
+      event: r.one.events({
+        from: r.alarms.eventId,
+        to: r.events.id,
+      }),
+      exception: r.one.eventExceptions({
+        from: r.alarms.exceptionId,
+        to: r.eventExceptions.id,
+      }),
+    },
+    activityCategories: {
+      activities: r.many.activities(),
+    },
+    activities: {
+      category: r.one.activityCategories({
+        from: r.activities.categoryId,
+        to: r.activityCategories.id,
+      }),
+      goals: r.many.activityGoals(),
+      logs: r.many.activityLogs(),
+    },
+    activityGoals: {
+      activity: r.one.activities({
+        from: r.activityGoals.activityId,
+        to: r.activities.id,
+        optional: false,
+      }),
+    },
+    activityLogs: {
+      activity: r.one.activities({
+        from: r.activityLogs.activityId,
+        to: r.activities.id,
+        optional: false,
+      }),
+    },
   }),
 );
-
-// Relations — Calendar
-
-export const calendarsRelations = relations(calendars, ({ many }) => ({
-  events: many(events),
-}));
-
-export const eventsRelations = relations(events, ({ one, many }) => ({
-  calendar: one(calendars, {
-    fields: [events.calendarId],
-    references: [calendars.id],
-  }),
-  exceptions: many(eventExceptions),
-  alarms: many(alarms),
-}));
-
-export const eventExceptionsRelations = relations(
-  eventExceptions,
-  ({ one, many }) => ({
-    event: one(events, {
-      fields: [eventExceptions.eventId],
-      references: [events.id],
-    }),
-    alarms: many(alarms),
-  }),
-);
-
-export const alarmsRelations = relations(alarms, ({ one }) => ({
-  event: one(events, {
-    fields: [alarms.eventId],
-    references: [events.id],
-  }),
-  exception: one(eventExceptions, {
-    fields: [alarms.exceptionId],
-    references: [eventExceptions.id],
-  }),
-}));
-
-// Relations — Activities
-
-export const activityCategoriesRelations = relations(
-  activityCategories,
-  ({ many }) => ({
-    activities: many(activities),
-  }),
-);
-
-export const activitiesRelations = relations(activities, ({ one, many }) => ({
-  category: one(activityCategories, {
-    fields: [activities.categoryId],
-    references: [activityCategories.id],
-  }),
-  goals: many(activityGoals),
-  logs: many(activityLogs),
-}));
-
-export const activityGoalsRelations = relations(activityGoals, ({ one }) => ({
-  activity: one(activities, {
-    fields: [activityGoals.activityId],
-    references: [activities.id],
-  }),
-}));
-
-export const activityLogsRelations = relations(activityLogs, ({ one }) => ({
-  activity: one(activities, {
-    fields: [activityLogs.activityId],
-    references: [activities.id],
-  }),
-}));
