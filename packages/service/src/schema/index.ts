@@ -12,7 +12,7 @@ import { activities } from "./activities";
 import { activityGoals } from "./activity-goals";
 import { activityLogs } from "./activity-logs";
 
-export { currencies } from "./currencies";
+export { currencies, currencyType } from "./currencies";
 export { categories } from "./categories";
 export { wallets } from "./wallets";
 export {
@@ -21,11 +21,7 @@ export {
   transactionEntries,
 } from "./transactions";
 export { calendars } from "./calendars";
-export {
-  eventStatusEnum,
-  eventTransparencyEnum,
-  events,
-} from "./events";
+export { eventStatusEnum, eventTransparencyEnum, events } from "./events";
 export { eventExceptions } from "./event-exceptions";
 export { alarmActionEnum, alarms } from "./alarms";
 export { activityCategories } from "./activity-categories";

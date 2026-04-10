@@ -1,1 +1,0 @@
-ALTER TABLE "currencies" ADD COLUMN "type" "currency_type";

@@ -1,6 +1,6 @@
 import { pgTable, uuid, varchar, timestamp, pgEnum } from "drizzle-orm/pg-core";
 
-const currencyType = pgEnum("currency_type", ["fiat", "crypto"]);
+export const currencyType = pgEnum("currency_type", ["fiat", "crypto"]);
 
 export const currencies = pgTable("currencies", {
   id: uuid("id").defaultRandom().primaryKey(),

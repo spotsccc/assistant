@@ -1,7 +1,7 @@
 {
   "version": "8",
   "dialect": "postgres",
-  "id": "9fe5bc14-c9f3-4d1c-ab20-995140b3a7f4",
+  "id": "cda92314-69c3-4a80-bf49-9646d1245772",
   "prevIds": [
     "f1c60098-8bc7-496b-9bff-e61422c65b66"
   ],
@@ -23,6 +23,15 @@
         "audio"
       ],
       "name": "alarm_action",
+      "entityType": "enums",
+      "schema": "public"
+    },
+    {
+      "values": [
+        "fiat",
+        "crypto"
+      ],
+      "name": "currency_type",
       "entityType": "enums",
       "schema": "public"
     },
