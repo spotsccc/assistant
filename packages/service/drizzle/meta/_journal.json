@@ -15,6 +15,13 @@
       "when": 1775789656514,
       "tag": "0001_eminent_miracleman",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1775825417257,
+      "tag": "0002_heavy_tigra",
+      "breakpoints": true
     }
   ]
 }
