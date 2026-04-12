@@ -8,6 +8,50 @@ const CONFIG_FILE = path.join(CONFIG_DIR, "config.json");
 
 interface Config {
   databaseUrl?: string;
+  geckoApiKey?: string;
+  openExchangeRatesAppId?: string;
+}
+
+type ConfigUpdate = {
+  [Key in keyof Config]?: Config[Key] | null;
+};
+
+const CONFIG_ENV_MAPPINGS = [
+  ["databaseUrl", "DATABASE_URL"],
+  ["geckoApiKey", "GECKO_API_KEY"],
+  ["openExchangeRatesAppId", "OPEN_EXCHANGE_RATES_APP_ID"],
+] as const satisfies ReadonlyArray<[keyof Config, string]>;
+
+function parseConfigValue(value: unknown): Config | Error {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return new Error("Config must be a JSON object");
+  }
+
+  const candidate = value as Record<string, unknown>;
+  const nextConfig: Config = {};
+
+  if ("databaseUrl" in candidate) {
+    if (typeof candidate.databaseUrl !== "string") {
+      return new Error("Config field databaseUrl must be a string");
+    }
+    nextConfig.databaseUrl = candidate.databaseUrl;
+  }
+
+  if ("geckoApiKey" in candidate) {
+    if (typeof candidate.geckoApiKey !== "string") {
+      return new Error("Config field geckoApiKey must be a string");
+    }
+    nextConfig.geckoApiKey = candidate.geckoApiKey;
+  }
+
+  if ("openExchangeRatesAppId" in candidate) {
+    if (typeof candidate.openExchangeRatesAppId !== "string") {
+      return new Error("Config field openExchangeRatesAppId must be a string");
+    }
+    nextConfig.openExchangeRatesAppId = candidate.openExchangeRatesAppId;
+  }
+
+  return nextConfig;
 }
 
 function readConfig(): Config {
@@ -17,16 +61,98 @@ function readConfig(): Config {
   });
   if (raw instanceof Error) return {};
   const parsed = errore.try({
-    try: () => JSON.parse(raw) as Config,
+    try: () => JSON.parse(raw) as unknown,
     catch: () => new Error("Invalid config"),
   });
   if (parsed instanceof Error) return {};
-  return parsed;
+  const config = parseConfigValue(parsed);
+  if (config instanceof Error) return {};
+  return config;
 }
 
 function writeConfig(config: Config) {
   fs.mkdirSync(CONFIG_DIR, { recursive: true });
   fs.writeFileSync(CONFIG_FILE, JSON.stringify(config, null, 2));
+}
+
+function mergeConfig(update: ConfigUpdate) {
+  const currentConfig = readConfig();
+  const nextConfig: Config = { ...currentConfig };
+
+  for (const [key, value] of Object.entries(update) as Array<
+    [keyof Config, string | null]
+  >) {
+    if (value === null) {
+      delete nextConfig[key];
+      continue;
+    }
+    nextConfig[key] = value;
+  }
+
+  writeConfig(nextConfig);
+}
+
+function parseConfigUpdate(json: string) {
+  const parsed = errore.try({
+    try: () => JSON.parse(json) as unknown,
+    catch: () => new Error("Config update must be valid JSON"),
+  });
+  if (parsed instanceof Error) {
+    return parsed;
+  }
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+    return new Error("Config update must be a JSON object");
+  }
+
+  const candidate = parsed as Record<string, unknown>;
+  const nextConfig: ConfigUpdate = {};
+  const supportedKeys = new Set(CONFIG_ENV_MAPPINGS.map(([key]) => key));
+
+  for (const key of Object.keys(candidate)) {
+    if (!supportedKeys.has(key as keyof Config)) {
+      return new Error(`Unsupported config field: ${key}`);
+    }
+  }
+
+  if ("databaseUrl" in candidate) {
+    if (candidate.databaseUrl !== null && typeof candidate.databaseUrl !== "string") {
+      return new Error("Config field databaseUrl must be a string or null");
+    }
+    nextConfig.databaseUrl = candidate.databaseUrl as string | null;
+  }
+
+  if ("geckoApiKey" in candidate) {
+    if (candidate.geckoApiKey !== null && typeof candidate.geckoApiKey !== "string") {
+      return new Error("Config field geckoApiKey must be a string or null");
+    }
+    nextConfig.geckoApiKey = candidate.geckoApiKey as string | null;
+  }
+
+  if ("openExchangeRatesAppId" in candidate) {
+    if (
+      candidate.openExchangeRatesAppId !== null &&
+      typeof candidate.openExchangeRatesAppId !== "string"
+    ) {
+      return new Error(
+        "Config field openExchangeRatesAppId must be a string or null",
+      );
+    }
+    nextConfig.openExchangeRatesAppId =
+      candidate.openExchangeRatesAppId as string | null;
+  }
+
+  return nextConfig;
+}
+
+function hydrateEnvFromConfig() {
+  const config = readConfig();
+
+  for (const [configKey, envKey] of CONFIG_ENV_MAPPINGS) {
+    const value = config[configKey];
+    if (!process.env[envKey] && value) {
+      process.env[envKey] = value;
+    }
+  }
 }
 
 const command = process.argv[2];
@@ -42,18 +168,29 @@ if (command === "auth") {
     console.error("Usage: assistant auth <database-url>");
     process.exit(1);
   }
-  writeConfig({ databaseUrl: jsonArg });
+  mergeConfig({ databaseUrl: jsonArg });
   console.log("Database URL saved.");
   process.exit(0);
 }
 
-// Set DATABASE_URL from config if not already in env
-if (!process.env.DATABASE_URL) {
-  const config = readConfig();
-  if (config.databaseUrl) {
-    process.env.DATABASE_URL = config.databaseUrl;
+if (command === "config") {
+  if (!jsonArg) {
+    console.error(
+      'Usage: assistant config \'{"geckoApiKey":"...","openExchangeRatesAppId":"..."}\'',
+    );
+    process.exit(1);
   }
+  const configUpdate = parseConfigUpdate(jsonArg);
+  if (configUpdate instanceof Error) {
+    console.error(configUpdate.message);
+    process.exit(1);
+  }
+  mergeConfig(configUpdate);
+  console.log("Config saved.");
+  process.exit(0);
 }
+
+hydrateEnvFromConfig();
 
 const {
   createTransaction,
@@ -155,7 +292,7 @@ const commands: Record<string, Handler> = {
 const handler = commands[command];
 if (!handler) {
   console.error(
-    `Unknown command: ${command}\nAvailable: auth, ${Object.keys(commands).join(", ")}`,
+    `Unknown command: ${command}\nAvailable: auth, config, ${Object.keys(commands).join(", ")}`,
   );
   process.exit(1);
 }
