@@ -47,7 +47,7 @@ export const transactionEntries = pgTable("transaction_entries", {
     precision: 36,
     scale: 18,
   }).notNull(),
-  snapshot_Rate: numeric("snapshot_rate", {
+  snapshotRate: numeric("snapshot_rate", {
     precision: 36,
     scale: 18,
   }),

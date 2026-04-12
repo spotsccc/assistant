@@ -8,6 +8,7 @@ import {
 } from "../schema/index";
 import z from "zod";
 import { NotFoundError, InsufficientFundsError, DbError } from "./errors";
+import { getExchangeRateToBase } from "./exchange-rates";
 
 const numericString = z
   .string()
@@ -30,10 +31,7 @@ export const incomeSchema = z.object({
 
 export const expenseSchema = z.object({
   ...baseFields,
-  categoryId: z
-    .string()
-    .uuid()
-    .describe("Category ID (required for expenses)"),
+  categoryId: z.string().uuid().describe("Category ID (required for expenses)"),
   type: z.literal("expense"),
 });
 
@@ -93,7 +91,7 @@ function createSnapshotEntry({
     amount,
     snapshotCurrencyId: currencyId,
     snapshotAmount: amount,
-    snapshot_Rate: "1",
+    snapshotRate: "1",
   };
 }
 
@@ -122,6 +120,11 @@ async function createIncome({
     return new NotFoundError({ entity: "Currency", id: currencyCode });
   }
 
+  const baseExchangeRate = await getExchangeRateToBase(currency.code);
+  if (baseExchangeRate instanceof Error) {
+    return baseExchangeRate;
+  }
+
   return await db
     .transaction(async (tx) => {
       const [txn] = await tx
@@ -132,15 +135,23 @@ async function createIncome({
         })
         .returning();
 
+      const snapshotAmount = parseFloat(amount) * baseExchangeRate;
+      const usd = await tx.query.currencies.findFirst({
+        where: {
+          code: "USD",
+        },
+      });
+
       const [entry] = await tx
         .insert(transactionEntries)
         .values({
           transactionId: txn!.id,
           walletId,
-          ...createSnapshotEntry({
-            currencyId: currency.id,
-            amount,
-          }),
+          amount,
+          currencyId: currency.id,
+          snapshotAmount: `${snapshotAmount}`,
+          snapshotCurrencyId: usd!.id,
+          snapshotRate: `${baseExchangeRate}`,
         })
         .returning();
 
@@ -173,6 +184,11 @@ async function createExpense({
   });
   if (!currency) {
     return new NotFoundError({ entity: "Currency", id: currencyCode });
+  }
+
+  const baseExchangeRate = await getExchangeRateToBase(currency.code);
+  if (baseExchangeRate instanceof Error) {
+    return baseExchangeRate;
   }
 
   return await db
@@ -208,15 +224,23 @@ async function createExpense({
         })
         .returning();
 
+      const snapshotAmount = parseFloat(amount) * baseExchangeRate;
+      const usd = await tx.query.currencies.findFirst({
+        where: {
+          code: "USD",
+        },
+      });
+
       const [entry] = await tx
         .insert(transactionEntries)
         .values({
           transactionId: txn!.id,
           walletId,
-          ...createSnapshotEntry({
-            currencyId: currency.id,
-            amount: `-${amount}`,
-          }),
+          amount: `-${amount}`,
+          currencyId: currency.id,
+          snapshotAmount: `-${snapshotAmount}`,
+          snapshotRate: `${baseExchangeRate}`,
+          snapshotCurrencyId: usd!.id,
         })
         .returning();
 
@@ -271,6 +295,15 @@ async function createTransfer({
     return new NotFoundError({ entity: "Currency", id: toCurrencyCode });
   }
 
+  const fromBaseExchangeRate = await getExchangeRateToBase(fromCurrency.code);
+  if (fromBaseExchangeRate instanceof Error) {
+    return fromBaseExchangeRate;
+  }
+  const toBaseExchangeRate = await getExchangeRateToBase(toCurrency.code);
+  if (toBaseExchangeRate instanceof Error) {
+    return toBaseExchangeRate;
+  }
+
   return await db
     .transaction(async (tx) => {
       const { balance } = (
@@ -303,24 +336,34 @@ async function createTransfer({
         })
         .returning();
 
+      const fromSnapshotAmount = parseFloat(amount) * fromBaseExchangeRate;
+      const toSnapshotAmount = parseFloat(toAmount) * toBaseExchangeRate;
+
+      const usd = await tx.query.currencies.findFirst({
+        where: {
+          code: "USD",
+        },
+      });
       const [debitEntry, creditEntry] = await tx
         .insert(transactionEntries)
         .values([
           {
             transactionId: txn!.id,
             walletId,
-            ...createSnapshotEntry({
-              currencyId: fromCurrency.id,
-              amount: `-${amount}`,
-            }),
+            amount: `-${amount}`,
+            currencyId: fromCurrency.id,
+            snapshotAmount: `-${fromSnapshotAmount}`,
+            snapshotRate: `${fromBaseExchangeRate}`,
+            snapshotCurrencyId: usd!.id,
           },
           {
             transactionId: txn!.id,
             walletId: toWalletId,
-            ...createSnapshotEntry({
-              currencyId: toCurrency.id,
-              amount: toAmount,
-            }),
+            amount: toAmount,
+            currencyId: toCurrency.id,
+            snapshotAmount: `${toSnapshotAmount}`,
+            snapshotRate: `${toBaseExchangeRate}`,
+            snapshotCurrencyId: usd!.id,
           },
         ])
         .returning();
