@@ -22,6 +22,7 @@ export async function getCurrencies() {
   });
 }
 
+// todo: fix
 export async function createCurrency(input: {
   code: string;
   name: string;
@@ -29,7 +30,12 @@ export async function createCurrency(input: {
 }) {
   const [currency] = await db
     .insert(currencies)
-    .values({ code: input.code, name: input.name, symbol: input.symbol })
+    .values({
+      code: input.code,
+      name: input.name,
+      symbol: input.symbol,
+      type: "fiat",
+    })
     .returning();
 
   return currency!;
