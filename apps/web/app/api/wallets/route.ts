@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getWallets, createWallet } from "@repo/service/operations";
 
-export async function GET() {
-  const result = await getWallets();
+export async function GET(req: NextRequest) {
+  const result = await getWallets({
+    balanceCurrencyCode: req.nextUrl.searchParams.get("balanceCurrencyCode") ?? undefined,
+  });
   return NextResponse.json(result);
 }
 

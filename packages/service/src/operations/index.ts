@@ -19,6 +19,7 @@ export {
   getWalletBalance,
   createWallet,
   deleteWallet,
+  getWalletsSchema,
   createWalletSchema,
   deleteWalletSchema,
   getWalletBalanceSchema,

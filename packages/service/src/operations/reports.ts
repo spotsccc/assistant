@@ -12,6 +12,10 @@ export const spendingReportSchema = z.object({
   walletId: z.string().uuid().optional().describe("Filter by wallet ID"),
   dateFrom: z.coerce.date().optional().describe("Start date (ISO string)"),
   dateTo: z.coerce.date().optional().describe("End date (ISO string)"),
+  baseCurrencyCode: z
+    .string()
+    .optional()
+    .describe("Aggregate amounts in this base currency"),
   groupBy: z
     .enum(["category", "day", "week", "month"])
     .describe("How to group spending data"),
@@ -20,6 +24,12 @@ export const spendingReportSchema = z.object({
 export type SpendingReportInput = z.infer<typeof spendingReportSchema>;
 
 export async function spendingReport(input: SpendingReportInput) {
+  const amountColumn = input.baseCurrencyCode
+    ? transactionEntries.snapshotAmount
+    : transactionEntries.amount;
+  const currencyIdColumn = input.baseCurrencyCode
+    ? transactionEntries.snapshotCurrencyId
+    : transactionEntries.currencyId;
   const conditions: SQL[] = [eq(transactions.type, "expense")];
 
   if (input.walletId) {
@@ -31,6 +41,9 @@ export async function spendingReport(input: SpendingReportInput) {
   if (input.dateTo) {
     conditions.push(lte(transactions.createdAt, input.dateTo));
   }
+  if (input.baseCurrencyCode) {
+    conditions.push(eq(currencies.code, input.baseCurrencyCode));
+  }
 
   const where = and(...conditions);
 
@@ -38,7 +51,7 @@ export async function spendingReport(input: SpendingReportInput) {
     .select({
       categoryId: transactions.categoryId,
       categoryName: categories.name,
-      total: sql<string>`sum(abs(${transactionEntries.amount}))`,
+      total: sql<string>`sum(abs(${amountColumn}))`,
       count: sql<number>`count(distinct ${transactions.id})`,
     })
     .from(transactions)
@@ -46,13 +59,14 @@ export async function spendingReport(input: SpendingReportInput) {
       transactionEntries,
       eq(transactionEntries.transactionId, transactions.id),
     )
+    .innerJoin(currencies, eq(currencyIdColumn, currencies.id))
     .leftJoin(categories, eq(transactions.categoryId, categories.id));
 
   if (input.groupBy === "category") {
     return await baseQuery
       .where(where)
       .groupBy(transactions.categoryId, categories.name)
-      .orderBy(sql`sum(abs(${transactionEntries.amount})) desc`);
+      .orderBy(sql`sum(abs(${amountColumn})) desc`);
   }
 
   const dateGroup = {
@@ -64,7 +78,7 @@ export async function spendingReport(input: SpendingReportInput) {
   return await db
     .select({
       period: dateGroup.as("period"),
-      total: sql<string>`sum(abs(${transactionEntries.amount}))`,
+      total: sql<string>`sum(abs(${amountColumn}))`,
       count: sql<number>`count(distinct ${transactions.id})`,
     })
     .from(transactions)
@@ -72,6 +86,7 @@ export async function spendingReport(input: SpendingReportInput) {
       transactionEntries,
       eq(transactionEntries.transactionId, transactions.id),
     )
+    .innerJoin(currencies, eq(currencyIdColumn, currencies.id))
     .where(where)
     .groupBy(dateGroup)
     .orderBy(dateGroup);
@@ -81,6 +96,10 @@ export const incomeReportSchema = z.object({
   walletId: z.string().uuid().optional().describe("Filter by wallet ID"),
   dateFrom: z.coerce.date().optional().describe("Start date (ISO string)"),
   dateTo: z.coerce.date().optional().describe("End date (ISO string)"),
+  baseCurrencyCode: z
+    .string()
+    .optional()
+    .describe("Aggregate amounts in this base currency"),
   groupBy: z
     .enum(["day", "week", "month"])
     .describe("How to group income data"),
@@ -89,6 +108,12 @@ export const incomeReportSchema = z.object({
 export type IncomeReportInput = z.infer<typeof incomeReportSchema>;
 
 export async function incomeReport(input: IncomeReportInput) {
+  const amountColumn = input.baseCurrencyCode
+    ? transactionEntries.snapshotAmount
+    : transactionEntries.amount;
+  const currencyIdColumn = input.baseCurrencyCode
+    ? transactionEntries.snapshotCurrencyId
+    : transactionEntries.currencyId;
   const conditions: SQL[] = [eq(transactions.type, "income")];
 
   if (input.walletId) {
@@ -100,6 +125,9 @@ export async function incomeReport(input: IncomeReportInput) {
   if (input.dateTo) {
     conditions.push(lte(transactions.createdAt, input.dateTo));
   }
+  if (input.baseCurrencyCode) {
+    conditions.push(eq(currencies.code, input.baseCurrencyCode));
+  }
 
   const where = and(...conditions);
 
@@ -112,7 +140,7 @@ export async function incomeReport(input: IncomeReportInput) {
   return await db
     .select({
       period: dateGroup.as("period"),
-      total: sql<string>`sum(${transactionEntries.amount})`,
+      total: sql<string>`sum(${amountColumn})`,
       count: sql<number>`count(distinct ${transactions.id})`,
     })
     .from(transactions)
@@ -120,6 +148,7 @@ export async function incomeReport(input: IncomeReportInput) {
       transactionEntries,
       eq(transactionEntries.transactionId, transactions.id),
     )
+    .innerJoin(currencies, eq(currencyIdColumn, currencies.id))
     .where(where)
     .groupBy(dateGroup)
     .orderBy(dateGroup);
@@ -129,11 +158,21 @@ export const financeSummarySchema = z.object({
   walletId: z.string().uuid().optional().describe("Filter by wallet ID"),
   dateFrom: z.coerce.date().optional().describe("Start date (ISO string)"),
   dateTo: z.coerce.date().optional().describe("End date (ISO string)"),
+  baseCurrencyCode: z
+    .string()
+    .optional()
+    .describe("Aggregate amounts in this base currency"),
 });
 
 export type FinanceSummaryInput = z.infer<typeof financeSummarySchema>;
 
 export async function financeSummary(input: FinanceSummaryInput) {
+  const amountColumn = input.baseCurrencyCode
+    ? transactionEntries.snapshotAmount
+    : transactionEntries.amount;
+  const currencyIdColumn = input.baseCurrencyCode
+    ? transactionEntries.snapshotCurrencyId
+    : transactionEntries.currencyId;
   const conditions: SQL[] = [
     inArray(transactions.type, ["income", "expense"]),
   ];
@@ -147,6 +186,9 @@ export async function financeSummary(input: FinanceSummaryInput) {
   if (input.dateTo) {
     conditions.push(lte(transactions.createdAt, input.dateTo));
   }
+  if (input.baseCurrencyCode) {
+    conditions.push(eq(currencies.code, input.baseCurrencyCode));
+  }
 
   const where = and(...conditions);
 
@@ -154,15 +196,15 @@ export async function financeSummary(input: FinanceSummaryInput) {
     .select({
       currencyCode: currencies.code,
       currencySymbol: currencies.symbol,
-      totalIncome: sql<string>`coalesce(sum(case when ${transactions.type} = 'income' then ${transactionEntries.amount} else 0 end), 0)`,
-      totalExpenses: sql<string>`coalesce(sum(case when ${transactions.type} = 'expense' then abs(${transactionEntries.amount}) else 0 end), 0)`,
+      totalIncome: sql<string>`coalesce(sum(case when ${transactions.type} = 'income' then ${amountColumn} else 0 end), 0)`,
+      totalExpenses: sql<string>`coalesce(sum(case when ${transactions.type} = 'expense' then abs(${amountColumn}) else 0 end), 0)`,
     })
     .from(transactions)
     .innerJoin(
       transactionEntries,
       eq(transactionEntries.transactionId, transactions.id),
     )
-    .innerJoin(currencies, eq(transactionEntries.currencyId, currencies.id))
+    .innerJoin(currencies, eq(currencyIdColumn, currencies.id))
     .where(where)
     .groupBy(currencies.code, currencies.symbol);
 

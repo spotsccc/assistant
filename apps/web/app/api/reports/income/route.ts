@@ -13,6 +13,7 @@ export async function GET(req: NextRequest) {
     walletId: params.get("walletId") ?? undefined,
     dateFrom: params.get("dateFrom") ? new Date(params.get("dateFrom")!) : undefined,
     dateTo: params.get("dateTo") ? new Date(params.get("dateTo")!) : undefined,
+    baseCurrencyCode: params.get("baseCurrencyCode") ?? undefined,
     groupBy,
   });
 

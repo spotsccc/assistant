@@ -52,6 +52,7 @@ interface TimePeriodRow {
   count: number;
 }
 
+const BASE_CURRENCY_CODE = "USD";
 const DONUT_COLORS = [
   "blue.6",
   "teal.6",
@@ -110,40 +111,87 @@ export default function DashboardPage() {
   const filters = { walletId, dateFrom, dateTo };
 
   const walletsQuery = useQuery<Wallet[]>({
-    queryKey: ["wallets"],
+    queryKey: ["wallets", BASE_CURRENCY_CODE],
     queryFn: () =>
-      fetch("/api/wallets").then((r) => r.json() as Promise<Wallet[]>),
+      fetch(`/api/wallets?balanceCurrencyCode=${BASE_CURRENCY_CODE}`).then(
+        (r) => r.json() as Promise<Wallet[]>,
+      ),
   });
 
   const summaryQuery = useQuery<SummaryRow[]>({
-    queryKey: ["reports", "summary", walletId, dateFrom?.toISOString(), dateTo?.toISOString()],
+    queryKey: [
+      "reports",
+      "summary",
+      BASE_CURRENCY_CODE,
+      walletId,
+      dateFrom?.toISOString(),
+      dateTo?.toISOString(),
+    ],
     queryFn: () =>
-      fetch(`/api/reports/summary?${buildSearchParams(filters)}`).then(
+      fetch(
+        `/api/reports/summary?${buildSearchParams(filters, {
+          baseCurrencyCode: BASE_CURRENCY_CODE,
+        })}`,
+      ).then(
         (r) => r.json() as Promise<SummaryRow[]>,
       ),
   });
 
   const categoryQuery = useQuery<SpendingByCategory[]>({
-    queryKey: ["reports", "spending", "category", walletId, dateFrom?.toISOString(), dateTo?.toISOString()],
+    queryKey: [
+      "reports",
+      "spending",
+      "category",
+      BASE_CURRENCY_CODE,
+      walletId,
+      dateFrom?.toISOString(),
+      dateTo?.toISOString(),
+    ],
     queryFn: () =>
       fetch(
-        `/api/reports/spending?${buildSearchParams(filters, { groupBy: "category" })}`,
+        `/api/reports/spending?${buildSearchParams(filters, {
+          groupBy: "category",
+          baseCurrencyCode: BASE_CURRENCY_CODE,
+        })}`,
       ).then((r) => r.json() as Promise<SpendingByCategory[]>),
   });
 
   const spendingTimeQuery = useQuery<TimePeriodRow[]>({
-    queryKey: ["reports", "spending", "time", groupBy, walletId, dateFrom?.toISOString(), dateTo?.toISOString()],
+    queryKey: [
+      "reports",
+      "spending",
+      "time",
+      BASE_CURRENCY_CODE,
+      groupBy,
+      walletId,
+      dateFrom?.toISOString(),
+      dateTo?.toISOString(),
+    ],
     queryFn: () =>
       fetch(
-        `/api/reports/spending?${buildSearchParams(filters, { groupBy })}`,
+        `/api/reports/spending?${buildSearchParams(filters, {
+          groupBy,
+          baseCurrencyCode: BASE_CURRENCY_CODE,
+        })}`,
       ).then((r) => r.json() as Promise<TimePeriodRow[]>),
   });
 
   const incomeTimeQuery = useQuery<TimePeriodRow[]>({
-    queryKey: ["reports", "income", groupBy, walletId, dateFrom?.toISOString(), dateTo?.toISOString()],
+    queryKey: [
+      "reports",
+      "income",
+      BASE_CURRENCY_CODE,
+      groupBy,
+      walletId,
+      dateFrom?.toISOString(),
+      dateTo?.toISOString(),
+    ],
     queryFn: () =>
       fetch(
-        `/api/reports/income?${buildSearchParams(filters, { groupBy })}`,
+        `/api/reports/income?${buildSearchParams(filters, {
+          groupBy,
+          baseCurrencyCode: BASE_CURRENCY_CODE,
+        })}`,
       ).then((r) => r.json() as Promise<TimePeriodRow[]>),
   });
 
@@ -153,6 +201,15 @@ export default function DashboardPage() {
   const categoryData = categoryQuery.data ?? [];
   const spendingTime = spendingTimeQuery.data ?? [];
   const incomeTime = incomeTimeQuery.data ?? [];
+  const baseCurrencySymbol =
+    summary[0]?.currencySymbol ??
+    wallets
+      .flatMap((wallet) => wallet.balances)
+      .find((balance) => balance.currencyCode === BASE_CURRENCY_CODE)
+      ?.currencySymbol ??
+    null;
+  const formatBaseAmount = (value: string | number) =>
+    formatAmount(value, baseCurrencySymbol, BASE_CURRENCY_CODE);
 
   // Merge income + spending time series for the combined chart
   const mergedTimeData = (() => {
@@ -253,30 +310,30 @@ export default function DashboardPage() {
           <SimpleGrid key={row.currencyCode} cols={{ base: 1, sm: 3 }}>
             <Card withBorder shadow="sm" radius="md">
               <Text size="sm" c="dimmed">
-                Доходы ({row.currencyCode})
+                Доходы ({BASE_CURRENCY_CODE})
               </Text>
               <Text size="xl" fw={700} c="teal">
-                {formatAmount(row.totalIncome, row.currencySymbol, row.currencyCode)}
+                {formatBaseAmount(row.totalIncome)}
               </Text>
             </Card>
             <Card withBorder shadow="sm" radius="md">
               <Text size="sm" c="dimmed">
-                Расходы ({row.currencyCode})
+                Расходы ({BASE_CURRENCY_CODE})
               </Text>
               <Text size="xl" fw={700} c="red">
-                {formatAmount(row.totalExpenses, row.currencySymbol, row.currencyCode)}
+                {formatBaseAmount(row.totalExpenses)}
               </Text>
             </Card>
             <Card withBorder shadow="sm" radius="md">
               <Text size="sm" c="dimmed">
-                Баланс ({row.currencyCode})
+                Баланс ({BASE_CURRENCY_CODE})
               </Text>
               <Text
                 size="xl"
                 fw={700}
                 c={parseFloat(row.net) >= 0 ? "teal" : "red"}
               >
-                {formatAmount(row.net, row.currencySymbol, row.currencyCode)}
+                {formatBaseAmount(row.net)}
               </Text>
             </Card>
           </SimpleGrid>
@@ -293,7 +350,7 @@ export default function DashboardPage() {
         {/* Spending by category */}
         <Card withBorder shadow="sm" radius="md">
           <Text fw={600} mb="md">
-            Расходы по категориям
+            Расходы по категориям ({BASE_CURRENCY_CODE})
           </Text>
           {categoryQuery.isLoading && <Skeleton h={250} />}
           {!categoryQuery.isLoading && donutData.length === 0 && (
@@ -308,6 +365,7 @@ export default function DashboardPage() {
               labelsType="percent"
               h={250}
               tooltipDataSource="segment"
+              valueFormatter={formatBaseAmount}
             />
           )}
         </Card>
@@ -315,7 +373,7 @@ export default function DashboardPage() {
         {/* Spending over time */}
         <Card withBorder shadow="sm" radius="md">
           <Text fw={600} mb="md">
-            Расходы по периодам
+            Расходы по периодам ({BASE_CURRENCY_CODE})
           </Text>
           {spendingTimeQuery.isLoading && <Skeleton h={250} />}
           {!spendingTimeQuery.isLoading && spendingBarData.length === 0 && (
@@ -329,6 +387,7 @@ export default function DashboardPage() {
               data={spendingBarData}
               dataKey="period"
               series={[{ name: "Расходы", color: "red.6" }]}
+              valueFormatter={formatBaseAmount}
             />
           )}
         </Card>
@@ -336,7 +395,7 @@ export default function DashboardPage() {
         {/* Income vs Expenses */}
         <Card withBorder shadow="sm" radius="md">
           <Text fw={600} mb="md">
-            Доходы vs Расходы
+            Доходы vs Расходы ({BASE_CURRENCY_CODE})
           </Text>
           {(spendingTimeQuery.isLoading || incomeTimeQuery.isLoading) && (
             <Skeleton h={250} />
@@ -357,6 +416,7 @@ export default function DashboardPage() {
                 { name: "Доходы", color: "teal.6" },
                 { name: "Расходы", color: "red.6" },
               ]}
+              valueFormatter={formatBaseAmount}
             />
           )}
         </Card>
@@ -364,7 +424,7 @@ export default function DashboardPage() {
         {/* Wallet balances */}
         <Card withBorder shadow="sm" radius="md">
           <Text fw={600} mb="md">
-            Баланс по кошелькам
+            Баланс по кошелькам ({BASE_CURRENCY_CODE})
           </Text>
           {walletsQuery.isLoading && <Skeleton h={250} />}
           {!walletsQuery.isLoading && wallets.length === 0 && (
