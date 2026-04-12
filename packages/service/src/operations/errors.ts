@@ -15,3 +15,13 @@ export class DbError extends errore.createTaggedError({
   name: "DbError",
   message: "Database operation failed: $reason",
 }) {}
+
+export class FetchError extends errore.createTaggedError({
+  name: "FetchError",
+  message: "Failed to fetch",
+}) {}
+
+export class ParsingError extends errore.createTaggedError({
+  name: "ParsingError",
+  message: "Failed to parse",
+}) {}
